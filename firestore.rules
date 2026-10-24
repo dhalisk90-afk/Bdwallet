@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Default-Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Admin verification: checked via admin collection or trusted bootstrapped email
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == 'skdev1dhali@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Record validation helper
+    function isValidRecord(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.accountType in ['personal', 'agent', 'merchant'] &&
+             data.serviceProvider in ['bkash', 'rocket', 'nagad'] &&
+             data.accountName is string && data.accountName.size() >= 2 && data.accountName.size() <= 100 &&
+             data.personalNumber is string && data.personalNumber.matches('^01[3-9][0-9]{8}$') &&
+             data.postalCode is string && data.postalCode.matches('^[0-9]{4}$') &&
+             data.operator in ['Grameenphone', 'Banglalink', 'Robi', 'Airtel', 'Teletalk'] &&
+             data.limitAmount is number && data.limitAmount >= 0 && data.limitAmount <= 10000000 &&
+             data.serviceTime is string && data.serviceTime.size() >= 2 && data.serviceTime.size() <= 100 &&
+             !('pin' in data) && !('otp' in data) && !('password' in data);
+    }
+
+    // Monthly Earning validation helper
+    function isValidMonthlyEarning(data) {
+      return data.accountId is string && data.accountId.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.month is string && data.month.size() >= 3 && data.month.size() <= 50 &&
+             data.monthlyAmount is number && data.monthlyAmount >= 0 &&
+             data.commissionPercentage is number && data.commissionPercentage >= 0 && data.commissionPercentage <= 100 &&
+             data.commissionAmount is number && data.commissionAmount >= 0 &&
+             data.status in ['draft', 'pending', 'pending_review', 'finalized'] &&
+             data.isCredited is bool;
+    }
+
+    // User profiles match
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isOwner(userId) &&
+                       incoming().keys().hasAll(['name', 'role', 'createdAt']) &&
+                       incoming().role == 'customer' &&
+                       incoming().name is string && incoming().name.size() <= 100;
+      allow update: if (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone'])) ||
+                       isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Customer Records match
+    match /records/{recordId} {
+      // Single doc read: Owner or Admin
+      allow get: if isValidId(recordId) && (isOwner(existing().userId) || isAdmin());
+
+      // List queries: Must strictly match owner's auth UID (or admin query)
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+
+      // Create: Authenticated, valid fields, matches auth.uid, no PIN/OTP
+      allow create: if isValidId(recordId) &&
+                       isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'userId', 'accountType', 'serviceProvider', 'accountName',
+                         'personalNumber', 'postalCode', 'operator', 'limitAmount',
+                         'serviceTime', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidRecord(incoming());
+
+      // Update: Owner can update editable fields (cannot change userId or createdAt), or Admin
+      allow update: if isValidId(recordId) && (
+        (isOwner(existing().userId) &&
+         incoming().userId == existing().userId &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['accountName', 'postalCode', 'operator', 'limitAmount', 'serviceTime', 'updatedAt']) &&
+         isValidRecord(incoming())) ||
+        isAdmin()
+      );
+
+      // Delete: Admin or Owner
+      allow delete: if isValidId(recordId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    // Monthly Earnings Collection match (Per Account Base)
+    match /monthly_earnings/{monthlyEarningId} {
+      // Customer can read their own monthly earnings; Admin can read all
+      allow get: if isValidId(monthlyEarningId) && (isOwner(existing().userId) || isAdmin());
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+
+      // Only Admin can create, update, or delete monthly earnings
+      allow create: if isValidId(monthlyEarningId) && isAdmin() && isValidMonthlyEarning(incoming());
+      allow update: if isValidId(monthlyEarningId) && isAdmin() && isValidMonthlyEarning(incoming());
+      allow delete: if isValidId(monthlyEarningId) && isAdmin();
+    }
+  }
+}

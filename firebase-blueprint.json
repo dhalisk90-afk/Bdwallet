@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "CustomerRecord": {
+      "title": "CustomerRecord",
+      "description": "Mobile financial service account record owned by a customer (bKash, Rocket, Nagad)",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "accountType": { "type": "string", "enum": ["personal", "agent", "merchant"] },
+        "serviceProvider": { "type": "string", "enum": ["bkash", "rocket", "nagad"] },
+        "accountName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "personalNumber": { "type": "string", "pattern": "^01[3-9]\\d{8}$", "maxLength": 11 },
+        "postalCode": { "type": "string", "pattern": "^\\d{4}$", "maxLength": 4 },
+        "operator": { "type": "string", "enum": ["Grameenphone", "Banglalink", "Robi", "Airtel", "Teletalk"] },
+        "limitAmount": { "type": "number" },
+        "serviceTime": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "commissionRate": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "accountType",
+        "serviceProvider",
+        "accountName",
+        "personalNumber",
+        "postalCode",
+        "operator",
+        "limitAmount",
+        "serviceTime",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MonthlyEarning": {
+      "title": "MonthlyEarning",
+      "description": "Monthly calculated commission earning per account base",
+      "type": "object",
+      "properties": {
+        "accountId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "month": { "type": "string", "minLength": 3, "maxLength": 50 },
+        "monthlyAmount": { "type": "number" },
+        "commissionPercentage": { "type": "number" },
+        "commissionAmount": { "type": "number" },
+        "note": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["draft", "pending", "finalized"] },
+        "isCredited": { "type": "boolean" },
+        "finalizedAt": { "type": "string", "format": "date-time" },
+        "finalizedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "accountId",
+        "userId",
+        "month",
+        "monthlyAmount",
+        "commissionPercentage",
+        "commissionAmount",
+        "status",
+        "isCredited",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role definition",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "email": { "type": "string", "maxLength": 120 },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/records/{recordId}": {
+      "schema": "CustomerRecord",
+      "description": "Customer mobile financial service account records"
+    },
+    "/monthly_earnings/{monthlyEarningId}": {
+      "schema": "MonthlyEarning",
+      "description": "Per account base monthly commission earnings and finalization status"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles and RBAC role definition"
+    }
+  }
+}

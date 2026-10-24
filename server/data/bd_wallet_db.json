@@ -1,0 +1,52 @@
+{
+  "users": [
+    {
+      "id": "user_admin_01",
+      "name": "সিস্টেম অ্যাডমিন (System Admin)",
+      "phone": "01700000000",
+      "email": "dhalisk90@gmail.com",
+      "role": "admin",
+      "passwordHash": "f63ee068ca65bba8069ea5ea827326505ebfb7e264c760fab16722cdf863fec79d6f39c59eb76798ad50d470161f9d9a441f451d51650ce433c0e857eba30223",
+      "salt": "seed_salt_admin_888",
+      "createdAt": "2026-10-20T15:50:58.044Z",
+      "status": "approved"
+    }
+  ],
+  "records": [],
+  "inviteCodes": [
+    {
+      "code": "BDW-INVITE-2026",
+      "createdBy": "user_admin_01",
+      "maxUses": 100,
+      "usedCount": 0,
+      "expiresAt": "2027-10-21T07:26:18.608Z",
+      "createdAt": "2026-10-20T15:50:58.044Z"
+    }
+  ],
+  "monthly_earnings": [],
+  "deposit_requests": [],
+  "withdrawal_requests": [],
+  "wallet_transactions": [],
+  "admin_activity_logs": [
+    {
+      "id": "log_seed_01",
+      "adminId": "user_admin_01",
+      "adminName": "সিস্টেম অ্যাডমিন",
+      "action": "system_initialize",
+      "targetEntity": "system",
+      "targetId": "sys_root",
+      "reason": "সিস্টেম প্রাথমিক কনফিগারেশন ও পারসিসটেন্স সেটআপ",
+      "timestamp": "2026-10-20T15:50:58.044Z"
+    },
+    {
+      "adminId": "user_admin_01",
+      "adminName": "সিস্টেম অ্যাডমিন (System Admin)",
+      "action": "approve_customer",
+      "targetEntity": "users",
+      "targetId": "user_1792702174583_5a8f1143",
+      "reason": "গ্রাহক সাব্বির হোসেন (01799887766) অ্যাকাউন্ট অনুমোদন করা হয়েছে।",
+      "id": "log_1792702174616_673121",
+      "timestamp": "2026-10-22T20:49:34.616Z"
+    }
+  ]
+}
