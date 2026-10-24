@@ -169,7 +169,9 @@ export interface DatabaseSchema {
   chat_messages?: ChatMessageDb[];
 }
 
-const DATA_DIR = path.resolve(process.cwd(), 'server', 'data');
+// On Netlify Functions the deploy directory is read-only, so BDW_DATA_ROOT points at a writable scratch dir.
+// The durable copy of the database lives in Netlify Blobs (see netlify/functions/api.mts).
+const DATA_DIR = path.resolve(process.env.BDW_DATA_ROOT || process.cwd(), 'server', 'data');
 const DB_FILE = path.join(DATA_DIR, 'bd_wallet_db.json');
 const BACKUP_FILE = path.join(DATA_DIR, 'bd_wallet_db.backup.json');
 const SNAPSHOTS_DIR = path.join(DATA_DIR, 'snapshots');
@@ -270,6 +272,7 @@ function getInitialSeedData(): DatabaseSchema {
 
 class JsonDatabase {
   private data: DatabaseSchema;
+  private dirty = false;
 
   constructor() {
     this.ensureDirectory();
@@ -524,7 +527,21 @@ class JsonDatabase {
   }
 
   private persist() {
+    this.dirty = true;
     this.saveToDisk(this.data);
+  }
+
+  // Replace the in-memory state with an externally stored copy (e.g. from Netlify Blobs)
+  loadState(state: DatabaseSchema) {
+    this.data = state;
+    this.dirty = false;
+  }
+
+  // Returns the current state if it changed since the last loadState/takeDirtyState call
+  takeDirtyState(): DatabaseSchema | null {
+    if (!this.dirty) return null;
+    this.dirty = false;
+    return this.data;
   }
 
   // Users
