@@ -17,14 +17,15 @@ import {
   AuthenticatedRequest,
 } from './server/auth.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const serverFile = fileURLToPath(import.meta.url);
+const serverDir = path.dirname(serverFile);
 
-const app = express();
+export const app = express();
 const PORT = 3000;
 
 // Ensure uploads directory exists
-const UPLOADS_DIR = path.resolve(__dirname, 'server', 'uploads', 'chat');
+const UPLOADS_ROOT = path.resolve(process.env.BDW_DATA_ROOT || serverDir, 'server', 'uploads');
+const UPLOADS_DIR = path.join(UPLOADS_ROOT, 'chat');
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
@@ -34,7 +35,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve static uploaded media files
-app.use('/uploads', express.static(path.resolve(__dirname, 'server', 'uploads')));
+app.use('/uploads', express.static(UPLOADS_ROOT));
 
 // CORS & Security headers
 app.use((req, res, next) => {
@@ -1914,9 +1915,9 @@ async function setupServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
+    app.use(express.static(path.resolve(serverDir, 'dist')));
     app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.resolve(serverDir, 'dist', 'index.html'));
     });
   }
 
@@ -1940,6 +1941,9 @@ async function setupServer() {
   });
 }
 
-setupServer().catch((err) => {
-  console.error('[BD Wallet] Server startup error:', err);
-});
+// When imported by the Netlify Function, the function drives the app itself
+if (!process.env.BDW_SERVERLESS) {
+  setupServer().catch((err) => {
+    console.error('[BD Wallet] Server startup error:', err);
+  });
+}
